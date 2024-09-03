@@ -21,15 +21,16 @@ void watchdogReset() {
 }
 
 void setup() {
-    pinMode(LED_PIN, OUTPUT);
-    digitalWrite(LED_PIN, HIGH);
-
     Serial.begin(9600);
     Serial.println("Booting.");
+
+    pinMode(LED_PIN, OUTPUT);
+    digitalWrite(LED_PIN, HIGH);
     
     pinMode(RELAY_PIN, OUTPUT);
     digitalWrite(RELAY_PIN, HIGH);
-    watchdog.attach(300, watchdogReset);
+
+    watchdog.attach(60, watchdogReset);
 
     connectToWiFi();
     connectToMQTT();
@@ -41,13 +42,12 @@ void loop() {
     delay(250);
 
     watchdog.detach();
-    watchdog.attach(300, watchdogReset);
+    watchdog.attach(60, watchdogReset);
 
     if (WiFi.status() != WL_CONNECTED) {
         connectToWiFi();
     }
     if (!mqttClient.connected()) { 
-        Serial.print("crap!");
         connectToMQTT();
     }
     mqttClient.loop();  
@@ -92,18 +92,26 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     for (int i = 0; i < length; i++) {
         message += (char)payload[i];
     }
-    Serial.print("Message arrived [");
-    Serial.print(topic);
-    Serial.print("] ");
-    Serial.println(message);
     
     if (String(topic) == "pool/pump/control") {
         if (message == "ON") {
+            flashLed();
             digitalWrite(RELAY_PIN, LOW);
             Serial.println("Relay ON.");
-        } else if (message == "OFF") {
+        } else {
+            flashLed();
             digitalWrite(RELAY_PIN, HIGH);
             Serial.println("Relay OFF.");
         }
     }
+}
+
+void flashLed() {
+    digitalWrite(LED_PIN, HIGH);
+    delay(500);
+    digitalWrite(LED_PIN, LOW);
+    delay(500);
+    digitalWrite(LED_PIN, HIGH);
+    delay(500);
+    digitalWrite(LED_PIN, LOW);
 }
